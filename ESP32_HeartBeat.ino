@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include "MAX30105.h"
 #include "heartRate.h"
+#include <LiquidCrystal.h>
 
 MAX30105 particleSensor;
 
@@ -26,6 +27,9 @@ State currentState = IDLE;
 unsigned long measurementStartTime;
 unsigned long DataSendStartTime;
 
+const int rs = 32, en = 33, d4 = 25, d5 = 26, d6 = 27, d7 = 14;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
 void initializeSensor() {
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
     Serial.println("MAX30105 was not found. Please check wiring/power.");
@@ -39,8 +43,10 @@ void initializeSensor() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.println("Initializing...");
+
+  lcd.begin(16, 2);
   //initializeSensor();
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
     Serial.println("MAX30102 was not found. Please check wiring/power. ");
@@ -51,6 +57,13 @@ void setup() {
   particleSensor.setup();                     // Configure sensor with default settings
   particleSensor.setPulseAmplitudeRed(0x0A);  // Turn Red LED to low to indicate the sensor is running
   particleSensor.setPulseAmplitudeGreen(0);   // Turn off Green LED
+
+  lcd.clear();
+  lcd.setCursor(5,0);
+  lcd.print("SYSTEM");
+  lcd.setCursor(1,1);
+  lcd.print("INITIALIZATION");
+  delay(2000);
 }
 
 void loop() {
@@ -75,9 +88,22 @@ void checkFingerDetection() {
     currentState = MEASURE_TEMPERATURE;
     DataisReady = 0;
     measurementStartTime = millis();
-  }  // Add an additional condition to transition to MEASURE_TEMPERATURE
+  }else{
+    lcd.clear();
+    lcd.setCursor(5,0);
+    lcd.print("PLACE");
+    lcd.setCursor(2,1);
+    lcd.print("YOUR FINGER");
+    delay(1000);
+  }
 }
 void measureTemperature() {
+  lcd.clear();
+  lcd.setCursor(3,0);
+  lcd.print("MEASURING");
+  lcd.setCursor(1,1);
+  lcd.print("TEMPERATURE...");
+  delay(1000);
   particleSensor.setup(0);  // Configure sensor. Turn off LEDs
   particleSensor.enableDIETEMPRDY();
   temperature = particleSensor.readTemperature();
@@ -96,6 +122,15 @@ void measureTemperature() {
     particleSensor.setup();                     // Configure sensor with default settings
     particleSensor.setPulseAmplitudeRed(0x0A);  // Turn Red LED to low to indicate the sensor is running
     particleSensor.setPulseAmplitudeGreen(0);   // Turn off Green LED
+    delay(1000);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("TEMP: ");
+    lcd.print(temperature, 2);
+    lcd.print((char)223); // print ° character
+    lcd.print("C");
+    lcd.setCursor(0,1);
+    lcd.print("MEASURING BP...");
     delay(1000);
     currentState = MEASURE_BP;
   }
@@ -129,6 +164,15 @@ void measureBP() {
     Serial.print(beatsPerMinute);
     Serial.print(", Avg BPM=");
     Serial.print(beatAvg);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("TEMP: ");
+    lcd.print(temperature, 2);
+    lcd.print((char)223); // print ° character
+    lcd.print("C");
+    lcd.setCursor(0,1);
+    lcd.print("AVG BPM: ");
+    lcd.print(beatAvg);
     delay(1000);
     DataisReady = 1;
     DataSendStartTime = millis();
